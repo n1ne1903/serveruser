@@ -23,31 +23,32 @@ const sheets = google.sheets({ version: "v4", auth });
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID; // Lấy ID từ biến môi trường
 
 // 🟢 API Lấy Danh Sách Người Dùng
-app.get("/api/users", async (req, res) => {
+app.get('/api/users', async (req, res) => {
     try {
         const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: "Users!A2:C", // Giả sử dữ liệu bắt đầu từ hàng A2
+            spreadsheetId,
+            range: 'Sheet1!A:C'
         });
 
-        const rows = response.data.values;
-        if (!rows || rows.length === 0) {
-            return res.status(200).json([]);
+        // Kiểm tra nếu Google Sheets chưa có dữ liệu
+        if (!response.data.values || response.data.values.length < 2) {
+            return res.json([]);  // Trả về mảng rỗng nếu không có dữ liệu
         }
 
-        // Chuyển đổi dữ liệu thành danh sách người dùng
-        const users = rows.map((row) => ({
+        // Chuyển dữ liệu từ Google Sheets thành JSON
+        const users = response.data.values.slice(1).map(row => ({
             name: row[0],
             email: row[1],
-            picture: row[2] || "",
+            picture: row[2]
         }));
 
-        res.status(200).json(users);
+        res.json(users);
     } catch (error) {
         console.error("Lỗi khi lấy danh sách người dùng:", error);
-        res.status(500).json({ error: "Không thể lấy danh sách người dùng" });
+        res.status(500).json({ message: "Lỗi server: Không thể lấy danh sách người dùng." });
     }
 });
+
 
 // 🟢 API Thêm Người Dùng Mới
 app.post("/api/addUser", async (req, res) => {
