@@ -50,21 +50,60 @@ app.get('/api/users', async (req, res) => {
 });
 
 // 🟢 API Thêm Người Dùng Mới
+// app.post("/api/addUser", async (req, res) => {
+//     try {
+//         const { sub, name, email, picture } = req.body;
+
+//         if (!name || !email) {
+//             return res.status(400).json({ error: "Thiếu thông tin người dùng" });
+//         }
+
+//         await sheets.spreadsheets.values.append({
+//             spreadsheetId: SPREADSHEET_ID,
+//             range: "Sheet1!A:D",
+//             valueInputOption: "RAW",
+//             insertDataOption: "INSERT_ROWS",
+//             resource: {
+//                 values: [[sub, name, email, picture]],
+//             },
+//         });
+
+//         res.status(201).json({ message: "Người dùng đã được thêm thành công" });
+//     } catch (error) {
+//         console.error("❌ Lỗi khi thêm người dùng:", error);
+//         res.status(500).json({ error: "Không thể thêm người dùng" });
+//     }
+// });
 app.post("/api/addUser", async (req, res) => {
     try {
         const { sub, name, email, picture } = req.body;
 
-        if (!name || !email) {
+        if (!sub || !name || !email) {
             return res.status(400).json({ error: "Thiếu thông tin người dùng" });
         }
 
+        // Lấy danh sách người dùng từ Google Sheets
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: "Sheet1!A:D" // Cột A chứa sub, cột B name, cột C email, cột D picture
+        });
+
+        const users = response.data.values || [];
+
+        // Kiểm tra xem sub đã tồn tại hay chưa
+        const userExists = users.some(row => row[0] === sub);
+        if (userExists) {
+            return res.status(200).json({ message: "Người dùng đã tồn tại, không cần ghi lại." });
+        }
+
+        // Nếu chưa tồn tại, thêm mới vào Google Sheets
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: "Sheet1!A:D",
             valueInputOption: "RAW",
             insertDataOption: "INSERT_ROWS",
             resource: {
-                values: [[sub, name, email, picture]],
+                values: [[sub, name, email, picture || "https://example.com/default-avatar.png"]],
             },
         });
 
@@ -74,7 +113,6 @@ app.post("/api/addUser", async (req, res) => {
         res.status(500).json({ error: "Không thể thêm người dùng" });
     }
 });
-
 // Khởi động server
 app.listen(PORT, () => {
     console.log(`✅ Server đang chạy tại http://localhost:${PORT}`);
