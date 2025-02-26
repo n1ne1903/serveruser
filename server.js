@@ -26,34 +26,33 @@ const SPREADSHEET_ID = process.env.SPREADSHEET_ID; // Lấy ID từ biến môi 
 app.get('/api/users', async (req, res) => {
     try {
         const response = await sheets.spreadsheets.values.get({
-            spreadsheetId,
+            spreadsheetId: SPREADSHEET_ID,
             range: 'Sheet1!A:C'
         });
 
-        // Kiểm tra nếu Google Sheets chưa có dữ liệu
+        // Nếu không có dữ liệu, trả về []
         if (!response.data.values || response.data.values.length < 2) {
-            return res.json([]);  // Trả về mảng rỗng nếu không có dữ liệu
+            return res.json([]);
         }
 
-        // Chuyển dữ liệu từ Google Sheets thành JSON
+        // Chuyển đổi dữ liệu từ Google Sheets sang JSON
         const users = response.data.values.slice(1).map(row => ({
-            name: row[0],
-            email: row[1],
-            picture: row[2]
+            name: row[0] || "No Name",
+            email: row[1] || "No Email",
+            picture: row[2] || "https://example.com/default-avatar.png"
         }));
 
         res.json(users);
     } catch (error) {
-        console.error("Lỗi khi lấy danh sách người dùng:", error);
+        console.error("❌ Lỗi khi lấy danh sách người dùng:", error);
         res.status(500).json({ message: "Lỗi server: Không thể lấy danh sách người dùng." });
     }
 });
 
-
 // 🟢 API Thêm Người Dùng Mới
 app.post("/api/addUser", async (req, res) => {
     try {
-        const { name, email, picture } = req.body;
+        const { sub, name, email, picture } = req.body;
 
         if (!name || !email) {
             return res.status(400).json({ error: "Thiếu thông tin người dùng" });
@@ -61,17 +60,17 @@ app.post("/api/addUser", async (req, res) => {
 
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: "Users!A2:C",
+            range: "Sheet1!A:D",
             valueInputOption: "RAW",
             insertDataOption: "INSERT_ROWS",
             resource: {
-                values: [[name, email, picture]],
+                values: [[sub, name, email, picture]],
             },
         });
 
         res.status(201).json({ message: "Người dùng đã được thêm thành công" });
     } catch (error) {
-        console.error("Lỗi khi thêm người dùng:", error);
+        console.error("❌ Lỗi khi thêm người dùng:", error);
         res.status(500).json({ error: "Không thể thêm người dùng" });
     }
 });
